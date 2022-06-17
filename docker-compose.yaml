@@ -1,0 +1,30 @@
+version: '3'
+services:
+  api:
+    container_name: test_app_api
+    build:
+      context: .
+      dockerfile: dev.api.Dockerfile
+    restart: always
+    ports:
+      - "8000:8000"
+    network_mode: host
+    depends_on:
+      - postgres
+  postgres:
+    container_name: test_app_database
+    image: "postgres:alpine"
+    restart: always
+    environment:
+      - DB_NAME=test_app_db    
+      - DB_USER=postgres    
+      - DB_PASS=password_secure
+    ports:
+      - "5000:5432"
+    volumes:
+      - "./db_data:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

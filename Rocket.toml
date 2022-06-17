@@ -1,0 +1,5 @@
+[development.databases]
+test_db =  {url = "postgres://postgres:test_pass@localhost/postgres"}
+
+[production.databases]
+test_db =  {url = "postgres://postgres:password_secure@localhost/test_app_db"}
