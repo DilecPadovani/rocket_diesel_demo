@@ -2,5 +2,5 @@
 test_db =  {url = "postgres://postgres:test_pass@localhost/postgres"}
 
 [production.databases]
-# this thest_db is meant to be used inside a docker image, indeed `postgres_db` refere to a docker-compose container
+# this test_db is meant to be used inside docker, indeed `postgres_db` refere to a docker-compose container
 test_db =  {url = "postgres://postgres:password_secure@postgres_db/postgres"}
