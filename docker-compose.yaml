@@ -9,7 +9,7 @@ services:
     ports:
       - '8000:8000'
     depends_on:
-      postgres_db: 
+      postgres_db:
         condition: "service_healthy"
   postgres_db:
     container_name: test_app_database
@@ -32,4 +32,4 @@ services:
 
 volumes:
   db_data:
-    external: true
+    external: false
