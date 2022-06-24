@@ -7,14 +7,26 @@ extern crate diesel_migrations;
 mod database;
 mod schema;
 
-use database::models::NewCounter;
+use database::models::{Counter, NewCounter};
 use rocket::{fairing::AdHoc, *};
-use rocket_contrib::databases::{database, diesel::PgConnection};
+use rocket_contrib::{
+    databases::{database, diesel::PgConnection},
+    json::Json,
+};
+
+// use rocket_okapi::okapi::schemars;
+// use rocket_okapi::okapi::schemars::JsonSchema;
+// use rocket_okapi::settings::UrlObject;
+use rocket_okapi::{openapi, routes_with_openapi, swagger_ui::*};
+
+use rocket::response::status;
+
 // to show how request guard works in rocket: usefull to implicitly check requirements
 // const TOKEN: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/token"));
 #[database("test_db")]
 struct DbConn(PgConnection);
 
+#[openapi]
 #[get("/")]
 fn all(conn: DbConn) -> String {
     if let Ok(counters) = database::actions::get_all_counters(&*conn) {
@@ -23,17 +35,19 @@ fn all(conn: DbConn) -> String {
         return "Could not get counters in the database".to_string();
     }
 }
+#[openapi]
 #[get("/add/<name>/<number>")]
 fn add(name: String, number: u32, conn: DbConn) -> String {
     let counter = NewCounter {
         name,
         counter: number as i32,
     };
-    let x = database::actions::add(&*conn, counter);
+    let x = database::actions::add(&*conn, counter).unwrap();
 
     format!("Added {:?}", x)
 }
 
+#[openapi]
 #[get("/subtract/<name>/<number>")]
 fn subtract(name: String, number: u32, conn: DbConn) -> String {
     let counter = NewCounter {
@@ -45,6 +59,7 @@ fn subtract(name: String, number: u32, conn: DbConn) -> String {
     format!("Subtracted: {:?}", x)
 }
 
+#[openapi]
 #[get("/status/<name>")]
 fn status(name: String, conn: DbConn) -> String {
     let x = database::actions::get_counter_by_name(&*conn, name);
@@ -68,6 +83,13 @@ fn main() {
             "Initialise server schema",
             run_db_migrations,
         ))
-        .mount("/", routes![all, add, subtract, status])
+        .mount("/", routes_with_openapi![all, add, subtract, status])
+        .mount(
+            "/docs",
+            make_swagger_ui(&SwaggerUIConfig {
+                url: "../openapi.json".to_owned(),
+                ..Default::default()
+            }),
+        )
         .launch();
 }
