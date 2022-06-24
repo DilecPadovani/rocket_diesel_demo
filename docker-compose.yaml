@@ -6,8 +6,8 @@ services:
       context: .
       dockerfile: dev.api.Dockerfile
     restart: unless-stopped
-    expose:
-      - 8000
+    ports:
+      - "8000:8000"
     depends_on:
       postgres_db:
         condition: "service_healthy"
@@ -16,12 +16,11 @@ services:
     image: 'postgres:alpine'
     restart: unless-stopped
     environment:
-      - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password_secure
     expose:
       - 5432
     volumes:
-      - './data:/var/lib/postgresql/data'
+      - './db_data:/var/lib/postgresql/data'
     healthcheck:
       test:
         - CMD-SHELL
