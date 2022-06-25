@@ -44,14 +44,11 @@ impl<'r> OpenApiFromRequest<'r> for DbConn {
 // use rocket::response::Result;
 #[openapi(tag = "xxxxxx")]
 #[get("/")]
-async fn all(conn: DbConn) -> Json<Counter> {
+async fn all(conn: DbConn) -> Json<Vec<Counter>> {
     let counters = conn
         .run(|c| database::actions::get_all_counters(&c))
         .await
-        .unwrap()
-        .first()
-        .unwrap()
-        .clone();
+        .unwrap();
     Json(counters)
 }
 #[openapi]
