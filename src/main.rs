@@ -86,7 +86,9 @@ async fn status(name: String, conn: DbConn) -> String {
 }
 
 async fn run_db_migrations<P: Phase>(rocket: Rocket<P>) -> Result<Rocket<P>, Rocket<P>> {
-    let conn = DbConn::get_one(&rocket).await.expect("database connection");
+    let conn = DbConn::get_one(&rocket)
+        .await
+        .expect("Failed to establish database connection");
     diesel_migrations::embed_migrations!();
 
     if let Err(e) = conn.run(|c| embedded_migrations::run(c)).await {
