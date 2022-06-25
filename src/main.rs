@@ -28,7 +28,10 @@ impl<'r> OpenApiFromRequest<'r> for DbConn {
     }
 }
 
-#[openapi(tag = "xxxxxx")]
+/// # Home page
+///
+/// Get all records in database
+#[openapi(tag = "Home")]
 #[get("/")]
 async fn all(conn: DbConn) -> Json<Vec<Counter>> {
     let counters = conn
@@ -38,7 +41,7 @@ async fn all(conn: DbConn) -> Json<Vec<Counter>> {
     Json(counters)
 }
 
-#[openapi]
+#[openapi(tag = "Counters")]
 #[get("/add/<name>/<number>")]
 async fn add(name: String, number: u32, conn: DbConn) -> String {
     let _counter = NewCounter {
@@ -52,7 +55,7 @@ async fn add(name: String, number: u32, conn: DbConn) -> String {
     format!("Added {:?}", x)
 }
 
-#[openapi]
+#[openapi(tag = "Counters")]
 #[get("/subtract/<name>/<number>")]
 async fn subtract(name: String, number: u32, conn: DbConn) -> String {
     let _counter = NewCounter {
@@ -66,7 +69,7 @@ async fn subtract(name: String, number: u32, conn: DbConn) -> String {
     format!("Subtracted: {:?}", x)
 }
 
-#[openapi]
+#[openapi(tag = "Counters")]
 #[get("/status/<name>")]
 async fn status(name: String, conn: DbConn) -> String {
     let x = conn
