@@ -9,11 +9,10 @@ edition = "2021"
 
 rocket = { version = "0.5.0-rc.2", default-features = false, features = ["json"] }
 diesel = { version = "1.4.4", features = ["postgres"] }
-dotenv = "0.15.0"
 diesel_migrations = "1.4.0"
 
 okapi =  { version = "0.4", features = ["derive_json_schema" ] }
-rocket_okapi = { version = "0.8.0-rc.2", features = ["swagger", "rocket_db_pools"]}
+rocket_okapi = { version = "0.8.0-rc.2", features = ["swagger"]}
 schemars = "0.8.10"
 serde = "1.0.136"
 
