@@ -6,3 +6,5 @@ test_db =  {url = "postgres://postgres:postgres@localhost/postgres"}
 test_db =  {url = "postgres://postgres:password_secure@postgres_db/postgres"}
 
 
+[release]
+address = "0.0.0.0"
