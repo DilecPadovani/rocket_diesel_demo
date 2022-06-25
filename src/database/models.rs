@@ -1,6 +1,7 @@
 use crate::schema::counters;
 use rocket_okapi::JsonSchema;
-#[derive(Queryable, Debug, JsonSchema)]
+use serde::Serialize;
+#[derive(Queryable, Clone, Debug, Serialize, JsonSchema)]
 pub struct Counter {
     pub id: i32,
     pub name: String,

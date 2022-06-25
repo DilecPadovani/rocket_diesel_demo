@@ -5,8 +5,8 @@ extern crate diesel;
 #[macro_use]
 extern crate diesel_migrations;
 mod database;
-mod schema;
 
+mod schema;
 use database::models::{Counter, NewCounter};
 use rocket::{fairing::AdHoc, outcome, outcome::Outcome, *};
 // use rocket_contrib::{
@@ -25,8 +25,8 @@ use rocket_okapi::request::{OpenApiFromRequest, RequestHeaderInput};
 use rocket_sync_db_pools::Connection;
 // to show how request guard works in rocket: usefull to implicitly check requirements
 // const TOKEN: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/token"));
+use rocket::serde::json::Json;
 use rocket_sync_db_pools::{database, diesel::PgConnection};
-
 // #[derive(DerefMut)]
 #[database("test_db")]
 struct DbConn(PgConnection);
@@ -41,24 +41,28 @@ impl<'r> OpenApiFromRequest<'r> for DbConn {
     }
 }
 
-#[openapi(tag = "counters")]
+// use rocket::response::Result;
+#[openapi(tag = "xxxxxx")]
 #[get("/")]
-async fn all(conn: DbConn) -> String {
-    if let Ok(counters) = conn.run(|c| database::actions::get_all_counters(&c)).await {
-        format!("{:#?}", counters)
-    } else {
-        return "Could not get counters in the database".to_string();
-    }
+async fn all(conn: DbConn) -> Json<Counter> {
+    let counters = conn
+        .run(|c| database::actions::get_all_counters(&c))
+        .await
+        .unwrap()
+        .first()
+        .unwrap()
+        .clone();
+    Json(counters)
 }
 #[openapi]
 #[get("/add/<name>/<number>")]
 async fn add(name: String, number: u32, conn: DbConn) -> String {
-    let counter = NewCounter {
+    let _counter = NewCounter {
         name,
         counter: number as i32,
     };
     let x = conn
-        .run(|c| database::actions::add(&c, counter).unwrap())
+        .run(|c| database::actions::add(&c, _counter).unwrap())
         .await;
 
     format!("Added {:?}", x)
@@ -67,11 +71,13 @@ async fn add(name: String, number: u32, conn: DbConn) -> String {
 #[openapi]
 #[get("/subtract/<name>/<number>")]
 async fn subtract(name: String, number: u32, conn: DbConn) -> String {
-    let counter = NewCounter {
+    let _counter = NewCounter {
         name,
         counter: number as i32,
     };
-    let x = conn.run(|c| database::actions::subtract(&c, counter)).await;
+    let x = conn
+        .run(|c| database::actions::subtract(&c, _counter))
+        .await;
 
     format!("Subtracted: {:?}", x)
 }
