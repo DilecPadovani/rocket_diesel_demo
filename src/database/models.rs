@@ -1,6 +1,6 @@
 use crate::schema::counters;
-
-#[derive(Queryable, Debug)]
+use rocket_okapi::JsonSchema;
+#[derive(Queryable, Debug, JsonSchema)]
 pub struct Counter {
     pub id: i32,
     pub name: String,

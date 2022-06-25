@@ -1,5 +1,5 @@
 #![feature(proc_macro_hygiene, decl_macro)]
-
+#![allow(warnings)]
 #[macro_use]
 extern crate diesel;
 #[macro_use]
@@ -8,28 +8,43 @@ mod database;
 mod schema;
 
 use database::models::{Counter, NewCounter};
-use rocket::{fairing::AdHoc, *};
-use rocket_contrib::{
-    databases::{database, diesel::PgConnection},
-    json::Json,
-};
+use rocket::{fairing::AdHoc, outcome, outcome::Outcome, *};
+// use rocket_contrib::{
+//     databases::{database, diesel::PgConnection},
+//     json::Json,
+// };
 
 // use rocket_okapi::okapi::schemars;
 // use rocket_okapi::okapi::schemars::JsonSchema;
 // use rocket_okapi::settings::UrlObject;
-use rocket_okapi::{openapi, routes_with_openapi, swagger_ui::*};
 
-use rocket::response::status;
-
+use rocket_okapi::{openapi, openapi_get_routes, swagger_ui::*};
+// use rocket::response::status;
+use rocket_okapi::gen::OpenApiGenerator;
+use rocket_okapi::request::{OpenApiFromRequest, RequestHeaderInput};
+use rocket_sync_db_pools::Connection;
 // to show how request guard works in rocket: usefull to implicitly check requirements
 // const TOKEN: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/token"));
+use rocket_sync_db_pools::{database, diesel::PgConnection};
+
+// #[derive(DerefMut)]
 #[database("test_db")]
 struct DbConn(PgConnection);
 
-#[openapi]
+impl<'r> OpenApiFromRequest<'r> for DbConn {
+    fn from_request_input(
+        _gen: &mut OpenApiGenerator,
+        _name: String,
+        _required: bool,
+    ) -> rocket_okapi::Result<RequestHeaderInput> {
+        Ok(RequestHeaderInput::None)
+    }
+}
+
+#[openapi(tag = "counters")]
 #[get("/")]
-fn all(conn: DbConn) -> String {
-    if let Ok(counters) = database::actions::get_all_counters(&*conn) {
+async fn all(conn: DbConn) -> String {
+    if let Ok(counters) = conn.run(|c| database::actions::get_all_counters(&c)).await {
         format!("{:#?}", counters)
     } else {
         return "Could not get counters in the database".to_string();
@@ -37,53 +52,59 @@ fn all(conn: DbConn) -> String {
 }
 #[openapi]
 #[get("/add/<name>/<number>")]
-fn add(name: String, number: u32, conn: DbConn) -> String {
+async fn add(name: String, number: u32, conn: DbConn) -> String {
     let counter = NewCounter {
         name,
         counter: number as i32,
     };
-    let x = database::actions::add(&*conn, counter).unwrap();
+    let x = conn
+        .run(|c| database::actions::add(&c, counter).unwrap())
+        .await;
 
     format!("Added {:?}", x)
 }
 
 #[openapi]
 #[get("/subtract/<name>/<number>")]
-fn subtract(name: String, number: u32, conn: DbConn) -> String {
+async fn subtract(name: String, number: u32, conn: DbConn) -> String {
     let counter = NewCounter {
         name,
         counter: number as i32,
     };
-    let x = database::actions::subtract(&*conn, counter);
+    let x = conn.run(|c| database::actions::subtract(&c, counter)).await;
 
     format!("Subtracted: {:?}", x)
 }
 
 #[openapi]
 #[get("/status/<name>")]
-fn status(name: String, conn: DbConn) -> String {
-    let x = database::actions::get_counter_by_name(&*conn, name);
+async fn status(name: String, conn: DbConn) -> String {
+    let x = conn
+        .run(|c| database::actions::get_counter_by_name(&c, name))
+        .await;
     format!("Hello, {:?} ", x)
 }
 
-fn run_db_migrations<'r>(rocket: &'r Rocket) {
-    let conn = DbConn::get_one(&rocket).expect("database connection");
+async fn run_db_migrations<P: Phase>(rocket: Rocket<P>) -> Result<Rocket<P>, Rocket<P>> {
+    let conn = DbConn::get_one(&rocket).await.expect("database connection");
     diesel_migrations::embed_migrations!();
 
-    if let Err(e) = embedded_migrations::run(&*conn) {
+    if let Err(e) = conn.run(|c| embedded_migrations::run(c)).await {
         eprintln!("Failed to run database migrations: {:?}", e);
+        return Err(rocket);
     }
+    Ok(rocket)
 }
-fn main() {
-    // diesel_migrations::embed_migrations!();
-    // embedded_migrations::run();
-    rocket::ignite()
+
+#[rocket::main]
+async fn main() {
+    rocket::build()
         .attach(DbConn::fairing())
-        .attach(AdHoc::on_launch(
+        .attach(AdHoc::try_on_ignite(
             "Initialise server schema",
             run_db_migrations,
         ))
-        .mount("/", routes_with_openapi![all, add, subtract, status])
+        .mount("/", openapi_get_routes![all, add, subtract, status])
         .mount(
             "/docs",
             make_swagger_ui(&SwaggerUIConfig {
@@ -91,5 +112,6 @@ fn main() {
                 ..Default::default()
             }),
         )
-        .launch();
+        .launch()
+        .await;
 }
