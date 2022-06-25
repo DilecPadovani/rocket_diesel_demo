@@ -1,33 +1,20 @@
 #![feature(proc_macro_hygiene, decl_macro)]
-#![allow(warnings)]
 #[macro_use]
 extern crate diesel;
 #[macro_use]
 extern crate diesel_migrations;
 mod database;
-
 mod schema;
+
 use database::models::{Counter, NewCounter};
-use rocket::{fairing::AdHoc, outcome, outcome::Outcome, *};
-// use rocket_contrib::{
-//     databases::{database, diesel::PgConnection},
-//     json::Json,
-// };
-
-// use rocket_okapi::okapi::schemars;
-// use rocket_okapi::okapi::schemars::JsonSchema;
-// use rocket_okapi::settings::UrlObject;
-
-use rocket_okapi::{openapi, openapi_get_routes, swagger_ui::*};
-// use rocket::response::status;
-use rocket_okapi::gen::OpenApiGenerator;
-use rocket_okapi::request::{OpenApiFromRequest, RequestHeaderInput};
-use rocket_sync_db_pools::Connection;
-// to show how request guard works in rocket: usefull to implicitly check requirements
-// const TOKEN: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/token"));
-use rocket::serde::json::Json;
+use rocket::{fairing::AdHoc, serde::json::Json, *};
+use rocket_okapi::{
+    gen::OpenApiGenerator,
+    openapi, openapi_get_routes,
+    request::{OpenApiFromRequest, RequestHeaderInput},
+    swagger_ui::*,
+};
 use rocket_sync_db_pools::{database, diesel::PgConnection};
-// #[derive(DerefMut)]
 #[database("test_db")]
 struct DbConn(PgConnection);
 
@@ -41,7 +28,6 @@ impl<'r> OpenApiFromRequest<'r> for DbConn {
     }
 }
 
-// use rocket::response::Result;
 #[openapi(tag = "xxxxxx")]
 #[get("/")]
 async fn all(conn: DbConn) -> Json<Vec<Counter>> {
@@ -51,6 +37,7 @@ async fn all(conn: DbConn) -> Json<Vec<Counter>> {
         .unwrap();
     Json(counters)
 }
+
 #[openapi]
 #[get("/add/<name>/<number>")]
 async fn add(name: String, number: u32, conn: DbConn) -> String {
@@ -101,8 +88,8 @@ async fn run_db_migrations<P: Phase>(rocket: Rocket<P>) -> Result<Rocket<P>, Roc
     Ok(rocket)
 }
 
-#[rocket::main]
-async fn main() {
+#[launch]
+async fn rocket() -> _ {
     rocket::build()
         .attach(DbConn::fairing())
         .attach(AdHoc::try_on_ignite(
@@ -117,6 +104,4 @@ async fn main() {
                 ..Default::default()
             }),
         )
-        .launch()
-        .await;
 }
