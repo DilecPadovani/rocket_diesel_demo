@@ -1,3 +1,5 @@
 /target
 /db_data
 /.vscode
+Cargo.lock
+**/*.rs.bk

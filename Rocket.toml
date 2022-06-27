@@ -1,6 +1,10 @@
-[development.databases]
+[debug.databases]
 test_db =  {url = "postgres://postgres:postgres@localhost/postgres"}
 
-[production.databases]
+[release.databases]
 # this test_db is meant to be used inside docker, indeed `postgres_db` refere to a docker-compose container
 test_db =  {url = "postgres://postgres:password_secure@postgres_db/postgres"}
+
+
+[release]
+address = "0.0.0.0"
