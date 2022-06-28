@@ -76,9 +76,11 @@ pub mod actions {
                 .query("select * from counters", &[])?
                 .iter()
                 .map(|row| Counter {
-                    id: row.get(0),
-                    name: row.get(1),
-                    counter: row.get(2),
+                    // input of get is column name or positional argument
+                    // id: row.get(0),
+                    id: row.get("id"),
+                    name: row.get("name"),
+                    counter: row.get("counter"),
                 })
                 .collect();
             Ok(counters)
