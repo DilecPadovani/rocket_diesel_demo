@@ -16,14 +16,17 @@ rocket_okapi = { version = "0.8.0-rc.2", features = ["swagger", "rapidoc"]}
 schemars = "0.8.10"
 serde = "1.0.136"
 # indexmap = "1.8.2"
+postgres = "0.19.3"
 
 
-[dependencies.rocket_contrib]
-version = "0.4.10"
-default-features = false
-features = ["json"]
 
 [dependencies.rocket_sync_db_pools]
 version = "0.1.0-rc.2"
-features = ["diesel_postgres_pool"]
+features = ["diesel_postgres_pool", "postgres_pool"]
 
+[dependencies.rocket_db_pools]
+version = "0.1.0-rc.2"
+features = ["sqlx_postgres"]
+
+[dependencies.sqlx]
+version = "0.5"

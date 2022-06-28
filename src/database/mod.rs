@@ -47,4 +47,41 @@ pub mod actions {
         use crate::schema::counters::dsl::*;
         counters::table().load(conn)
     }
+
+    pub mod with_sqlx {
+        use sqlx::{pool::PoolConnection, Postgres};
+
+        use crate::database::models::Counter;
+
+        // use postgres::{, NoTls};
+
+        pub async fn all(
+            conn: &mut PoolConnection<Postgres>,
+        ) -> Result<Vec<Counter>, sqlx::error::Error> {
+            sqlx::query_as::<_, Counter>("SELECT * FROM counters")
+                .fetch_all(conn)
+                .await
+        }
+    }
+
+    pub mod with_postgres_crate {
+        use postgres;
+
+        use crate::database::models::Counter;
+
+        // use postgres::{, NoTls};
+
+        pub fn all(conn: &mut postgres::Client) -> Result<Vec<Counter>, postgres::Error> {
+            let counters = conn
+                .query("select * from counters", &[])?
+                .iter()
+                .map(|row| Counter {
+                    id: row.get(0),
+                    name: row.get(1),
+                    counter: row.get(2),
+                })
+                .collect();
+            Ok(counters)
+        }
+    }
 }
