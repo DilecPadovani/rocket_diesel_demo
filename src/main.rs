@@ -48,6 +48,16 @@ impl<'r> OpenApiFromRequest<'r> for Diesel_DbConn {
     }
 }
 
+impl<'r> OpenApiFromRequest<'r> for Postgres_DbConn {
+    fn from_request_input(
+        _gen: &mut OpenApiGenerator,
+        _name: String,
+        _required: bool,
+    ) -> rocket_okapi::Result<RequestHeaderInput> {
+        Ok(RequestHeaderInput::None)
+    }
+}
+
 /// # Home page
 ///
 /// Get all records in database
@@ -105,38 +115,45 @@ async fn sqlx_all(mut conn: Connection<Sqlx_DbConn>) -> String {
     format!("with SQlx, {:?}", x)
 }
 
-#[get("/pg")]
-async fn pg_all(conn: Postgres_DbConn) -> String {
+#[openapi(tag = "pg_Counters")]
+#[get("/")]
+async fn pg_all(conn: Postgres_DbConn) -> Json<Vec<Counter>> {
     // let x = &mut *conn;
-    let x = conn
+    let all_counters = conn
         .run(|c| database::actions::with_postgres_crate::all(c))
-        .await;
-    format!("with postgres, {:?}", x)
+        .await
+        .unwrap();
+    Json(all_counters)
 }
 
-#[get("/pg/add/<name>/<number>")]
-async fn pg_add(name: String, number: u32, conn: Postgres_DbConn) -> String {
+#[openapi(tag = "pg_Counters")]
+#[get("/add/<name>/<number>")]
+async fn pg_add(name: String, number: u32, conn: Postgres_DbConn) -> Json<Counter> {
     let new_counter = NewCounter {
         name,
         counter: number as i32,
     };
-    let x = conn
+    let added_counter = conn
         .run(|c| database::actions::with_postgres_crate::add(c, new_counter))
-        .await;
-    format!("with postgres, {:?}", x)
+        .await
+        .unwrap();
+    Json(added_counter)
 }
 
-#[get("/pg/subtract/<name>/<number>")]
-async fn pg_subtract(name: String, number: u32, conn: Postgres_DbConn) -> String {
+#[openapi(tag = "pg_Counters")]
+#[get("/subtract/<name>/<number>")]
+async fn pg_subtract(name: String, number: u32, conn: Postgres_DbConn) -> Json<Counter> {
     let new_counter = NewCounter {
         name,
         counter: -(number as i32),
     };
-    let x = conn
+    let subtracted_counter = conn
         .run(|c| database::actions::with_postgres_crate::subtract(c, new_counter))
-        .await;
-    format!("with postgres, {:?}", x)
+        .await
+        .unwrap();
+    Json(subtracted_counter)
 }
+
 async fn run_db_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
     diesel_migrations::embed_migrations!();
 
@@ -160,7 +177,7 @@ async fn rocket() -> _ {
             "Initialise server schema",
             run_db_migrations,
         ))
-        .mount("/", routes![sqlx_all, pg_all, pg_add, pg_subtract])
+        .mount("/", routes![sqlx_all])
         .mount(
             "/docs/",
             make_swagger_ui(&SwaggerUIConfig {
@@ -189,7 +206,8 @@ async fn rocket() -> _ {
     mount_endpoints_and_merged_docs! {
         building_rocket, "/".to_owned(), openapi_settings,
         "calcio" => custom_route_spec,
-        "" =>  openapi_get_routes_spec!(openapi_settings: all,add, subtract, status  )
+        "" =>  openapi_get_routes_spec!(openapi_settings: all,add, subtract, status  ),
+        "/pg" => openapi_get_routes_spec!(openapi_settings: pg_all, pg_add, pg_subtract)
     };
     building_rocket
 }
