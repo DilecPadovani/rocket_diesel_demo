@@ -1,12 +1,12 @@
 # Stage1 : fetch needed dependecies
-FROM rustlang/rust:nightly as dep-fetcher
+FROM rust:latest as dep-fetcher
 WORKDIR /app
 RUN cargo install cargo-chef
 COPY . . 
 RUN cargo chef prepare --recipe-path recipe.json
 
 # Stage2: build needed dependecies
-FROM rustlang/rust:nightly as dep-builder
+FROM rust:latest as dep-builder
 WORKDIR /app
 # RUN cargo install cargo-chef
 COPY --from=dep-fetcher /usr/local/cargo /usr/local/cargo
@@ -14,7 +14,7 @@ COPY --from=dep-fetcher app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 
 # Stage3: compile the app
-FROM rustlang/rust:nightly as builder
+FROM rust:latest as builder
 COPY . /app
 WORKDIR /app
 COPY --from=dep-builder app/target target
