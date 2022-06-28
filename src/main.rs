@@ -80,7 +80,7 @@ async fn add(name: String, number: u32, conn: Diesel_DbConn) -> String {
 async fn subtract(name: String, number: u32, conn: Diesel_DbConn) -> String {
     let _counter = NewCounter {
         name,
-        counter: number as i32,
+        counter: -(number as i32),
     };
     let x = conn
         .run(|c| database::actions::subtract(&c, _counter))
@@ -114,6 +114,29 @@ async fn pg_all(conn: Postgres_DbConn) -> String {
     format!("with postgres, {:?}", x)
 }
 
+#[get("/pg/add/<name>/<number>")]
+async fn pg_add(name: String, number: u32, conn: Postgres_DbConn) -> String {
+    let new_counter = NewCounter {
+        name,
+        counter: number as i32,
+    };
+    let x = conn
+        .run(|c| database::actions::with_postgres_crate::add(c, new_counter))
+        .await;
+    format!("with postgres, {:?}", x)
+}
+
+#[get("/pg/subtract/<name>/<number>")]
+async fn pg_subtract(name: String, number: u32, conn: Postgres_DbConn) -> String {
+    let new_counter = NewCounter {
+        name,
+        counter: -(number as i32),
+    };
+    let x = conn
+        .run(|c| database::actions::with_postgres_crate::subtract(c, new_counter))
+        .await;
+    format!("with postgres, {:?}", x)
+}
 async fn run_db_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
     diesel_migrations::embed_migrations!();
 
@@ -137,7 +160,7 @@ async fn rocket() -> _ {
             "Initialise server schema",
             run_db_migrations,
         ))
-        .mount("/", routes![sqlx_all, pg_all])
+        .mount("/", routes![sqlx_all, pg_all, pg_add, pg_subtract])
         .mount(
             "/docs/",
             make_swagger_ui(&SwaggerUIConfig {

@@ -27,7 +27,7 @@ pub mod actions {
             .values(&to_subtract_counter)
             .on_conflict(name)
             .do_update()
-            .set(counter.eq(counter - to_subtract_counter.counter))
+            .set(counter.eq(counter + to_subtract_counter.counter))
             .get_result::<Counter>(conn)
     }
 
@@ -67,7 +67,7 @@ pub mod actions {
     pub mod with_postgres_crate {
         use postgres;
 
-        use crate::database::models::Counter;
+        use crate::database::models::{Counter, NewCounter};
 
         // use postgres::{, NoTls};
 
@@ -84,6 +84,32 @@ pub mod actions {
                 })
                 .collect();
             Ok(counters)
+        }
+
+        pub fn add(
+            conn: &mut postgres::Client,
+            to_add_counter: NewCounter,
+        ) -> Result<Counter, postgres::Error> {
+            let row = conn
+                .query_one("INSERT INTO counters (name, counter) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET counter = counters.counter + $2 RETURNING *", &[&to_add_counter.name, &to_add_counter.counter ])?;
+            Ok(Counter {
+                id: row.get("id"),
+                name: row.get("name"),
+                counter: row.get("counter"),
+            })
+        }
+
+        pub fn subtract(
+            conn: &mut postgres::Client,
+            to_add_counter: NewCounter,
+        ) -> Result<Counter, postgres::Error> {
+            let row = conn
+                .query_one("INSERT INTO counters (name,counter) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET counter = counters.counter + $2 RETURNING *", &[ &to_add_counter.name, &to_add_counter.counter ])?;
+            Ok(Counter {
+                id: row.get("id"),
+                name: row.get("name"),
+                counter: row.get("counter"),
+            })
         }
     }
 }
