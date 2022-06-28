@@ -28,17 +28,17 @@ use rocket_sync_db_pools::{database, diesel::PgConnection};
 
 #[database("test_db")]
 
-struct Diesel_DbConn(PgConnection);
+struct DieselDbConn(PgConnection);
 
 #[database("test_db")]
 
-struct Postgres_DbConn(postgres::Client);
+struct PostgresDbConn(postgres::Client);
 
 #[derive(Database)]
 #[database("test_db")]
-struct Sqlx_DbConn(sqlx::PgPool);
+struct SqlxDbConn(sqlx::PgPool);
 
-impl<'r> OpenApiFromRequest<'r> for Diesel_DbConn {
+impl<'r> OpenApiFromRequest<'r> for DieselDbConn {
     fn from_request_input(
         _gen: &mut OpenApiGenerator,
         _name: String,
@@ -48,7 +48,7 @@ impl<'r> OpenApiFromRequest<'r> for Diesel_DbConn {
     }
 }
 
-impl<'r> OpenApiFromRequest<'r> for Postgres_DbConn {
+impl<'r> OpenApiFromRequest<'r> for PostgresDbConn {
     fn from_request_input(
         _gen: &mut OpenApiGenerator,
         _name: String,
@@ -63,7 +63,7 @@ impl<'r> OpenApiFromRequest<'r> for Postgres_DbConn {
 /// Get all records in database
 #[openapi(tag = "Home")]
 #[get("/")]
-async fn all(conn: Diesel_DbConn) -> Json<Vec<Counter>> {
+async fn all(conn: DieselDbConn) -> Json<Vec<Counter>> {
     let counters = conn
         .run(|c| database::actions::get_all_counters(&c))
         .await
@@ -73,7 +73,7 @@ async fn all(conn: Diesel_DbConn) -> Json<Vec<Counter>> {
 
 #[openapi(tag = "Counters")]
 #[get("/add/<name>/<number>")]
-async fn add(name: String, number: u32, conn: Diesel_DbConn) -> String {
+async fn add(name: String, number: u32, conn: DieselDbConn) -> String {
     let _counter = NewCounter {
         name,
         counter: number as i32,
@@ -87,7 +87,7 @@ async fn add(name: String, number: u32, conn: Diesel_DbConn) -> String {
 
 #[openapi(tag = "Counters")]
 #[get("/subtract/<name>/<number>")]
-async fn subtract(name: String, number: u32, conn: Diesel_DbConn) -> String {
+async fn subtract(name: String, number: u32, conn: DieselDbConn) -> String {
     let _counter = NewCounter {
         name,
         counter: -(number as i32),
@@ -101,7 +101,7 @@ async fn subtract(name: String, number: u32, conn: Diesel_DbConn) -> String {
 
 #[openapi(tag = "Counters")]
 #[get("/status/<name>")]
-async fn status(name: String, conn: Diesel_DbConn) -> String {
+async fn status(name: String, conn: DieselDbConn) -> String {
     let x = conn
         .run(|c| database::actions::get_counter_by_name(&c, name))
         .await;
@@ -109,7 +109,7 @@ async fn status(name: String, conn: Diesel_DbConn) -> String {
 }
 
 #[get("/sqlx")]
-async fn sqlx_all(mut conn: Connection<Sqlx_DbConn>) -> String {
+async fn sqlx_all(mut conn: Connection<SqlxDbConn>) -> String {
     // let x = &mut *conn;
     let x = database::actions::with_sqlx::all(&mut *conn).await;
     format!("with SQlx, {:?}", x)
@@ -117,7 +117,7 @@ async fn sqlx_all(mut conn: Connection<Sqlx_DbConn>) -> String {
 
 #[openapi(tag = "pg_Counters")]
 #[get("/")]
-async fn pg_all(conn: Postgres_DbConn) -> Json<Vec<Counter>> {
+async fn pg_all(conn: PostgresDbConn) -> Json<Vec<Counter>> {
     // let x = &mut *conn;
     let all_counters = conn
         .run(|c| database::actions::with_postgres_crate::all(c))
@@ -128,7 +128,7 @@ async fn pg_all(conn: Postgres_DbConn) -> Json<Vec<Counter>> {
 
 #[openapi(tag = "pg_Counters")]
 #[get("/add/<name>/<number>")]
-async fn pg_add(name: String, number: u32, conn: Postgres_DbConn) -> Json<Counter> {
+async fn pg_add(name: String, number: u32, conn: PostgresDbConn) -> Json<Counter> {
     let new_counter = NewCounter {
         name,
         counter: number as i32,
@@ -142,7 +142,7 @@ async fn pg_add(name: String, number: u32, conn: Postgres_DbConn) -> Json<Counte
 
 #[openapi(tag = "pg_Counters")]
 #[get("/subtract/<name>/<number>")]
-async fn pg_subtract(name: String, number: u32, conn: Postgres_DbConn) -> Json<Counter> {
+async fn pg_subtract(name: String, number: u32, conn: PostgresDbConn) -> Json<Counter> {
     let new_counter = NewCounter {
         name,
         counter: -(number as i32),
@@ -157,7 +157,7 @@ async fn pg_subtract(name: String, number: u32, conn: Postgres_DbConn) -> Json<C
 async fn run_db_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
     diesel_migrations::embed_migrations!();
 
-    let conn = Diesel_DbConn::get_one(&rocket)
+    let conn = DieselDbConn::get_one(&rocket)
         .await
         .expect("database connection");
     conn.run(|c| embedded_migrations::run(c))
@@ -170,9 +170,9 @@ async fn run_db_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
 #[launch]
 async fn rocket() -> _ {
     let mut building_rocket = rocket::build()
-        .attach(Diesel_DbConn::fairing())
-        .attach(Postgres_DbConn::fairing())
-        .attach(Sqlx_DbConn::init())
+        .attach(DieselDbConn::fairing())
+        .attach(PostgresDbConn::fairing())
+        .attach(SqlxDbConn::init())
         .attach(AdHoc::on_ignite(
             "Initialise server schema",
             run_db_migrations,
