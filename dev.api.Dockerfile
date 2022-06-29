@@ -22,9 +22,7 @@ COPY --from=dep-builder /usr/local/cargo /usr/local/cargo
 RUN cargo build --release
 
 # Stage4: run the app
-# distroless -> this is one of the lightest linux images in the world (from Google) 
 FROM debian:stable-slim as runtime
-
 RUN apt-get update -y
 RUN apt-get install libpq-dev -y
 COPY Rocket.toml Rocket.toml
