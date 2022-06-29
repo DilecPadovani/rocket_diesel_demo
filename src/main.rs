@@ -72,39 +72,43 @@ async fn all(conn: DieselDbConn) -> Json<Vec<Counter>> {
 
 #[openapi(tag = "Counters")]
 #[get("/add/<name>/<number>")]
-async fn add(name: String, number: u32, conn: DieselDbConn) -> String {
+async fn add(name: String, number: u32, conn: DieselDbConn) -> Json<Counter> {
     let _counter = NewCounter {
         name,
         counter: number as i32,
     };
-    let x = conn
+    let counter = conn
         .run(|c| database::actions::add(&c, _counter).unwrap())
         .await;
-
-    format!("Added {:?}", x)
+    Json(counter)
 }
 
 #[openapi(tag = "Counters")]
 #[get("/subtract/<name>/<number>")]
-async fn subtract(name: String, number: u32, conn: DieselDbConn) -> String {
+async fn subtract(name: String, number: u32, conn: DieselDbConn) -> Json<Counter> {
     let _counter = NewCounter {
         name,
         counter: -(number as i32),
     };
-    let x = conn
+    let counter = conn
         .run(|c| database::actions::subtract(&c, _counter))
-        .await;
+        .await
+        .unwrap();
 
-    format!("Subtracted: {:?}", x)
+    Json(counter)
 }
 
 #[openapi(tag = "Counters")]
 #[get("/status/<name>")]
-async fn status(name: String, conn: DieselDbConn) -> String {
-    let x = conn
+async fn status(name: String, conn: DieselDbConn) -> Option<Json<Counter>> {
+    let counter = conn
         .run(|c| database::actions::get_counter_by_name(&c, name))
-        .await;
-    format!("Hello, {:?} ", x)
+        .await
+        .unwrap();
+    match counter {
+        Some(counter) => Some(Json(counter)),
+        None => None,
+    }
 }
 
 #[get("/sqlx")]
