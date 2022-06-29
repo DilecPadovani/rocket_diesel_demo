@@ -176,6 +176,11 @@ async fn rocket() -> _ {
             "Initialise server schema",
             run_db_migrations,
         ))
+        .attach(AdHoc::on_liftoff("API STARTED?", |_| {
+            Box::pin(async move {
+                println!("API is online!!");
+            })
+        }))
         .mount("/", routes![sqlx_all])
         .mount(
             "/docs/",
