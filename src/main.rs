@@ -29,132 +29,15 @@ use rocket_sync_db_pools::{database, diesel::PgConnection};
 
 struct DieselDbConn(PgConnection);
 
-#[database("test_db")]
-
-struct PostgresDbConn(postgres::Client);
-
 #[derive(Database)]
 #[database("test_db")]
 struct SqlxDbConn(sqlx::PgPool);
-
-impl<'r> OpenApiFromRequest<'r> for DieselDbConn {
-    fn from_request_input(
-        _gen: &mut OpenApiGenerator,
-        _name: String,
-        _required: bool,
-    ) -> rocket_okapi::Result<RequestHeaderInput> {
-        Ok(RequestHeaderInput::None)
-    }
-}
-
-impl<'r> OpenApiFromRequest<'r> for PostgresDbConn {
-    fn from_request_input(
-        _gen: &mut OpenApiGenerator,
-        _name: String,
-        _required: bool,
-    ) -> rocket_okapi::Result<RequestHeaderInput> {
-        Ok(RequestHeaderInput::None)
-    }
-}
-
-/// # Home page
-///
-/// Get all records in database
-#[openapi(tag = "Home")]
-#[get("/")]
-async fn all(conn: DieselDbConn) -> Json<Vec<Counter>> {
-    let counters = conn
-        .run(|c| database::actions::get_all_counters(&c))
-        .await
-        .unwrap();
-    Json(counters)
-}
-
-#[openapi(tag = "Counters")]
-#[get("/add/<name>/<number>")]
-async fn add(name: String, number: u32, conn: DieselDbConn) -> Json<Counter> {
-    let _counter = NewCounter {
-        name,
-        counter: number as i32,
-    };
-    let counter = conn
-        .run(|c| database::actions::add(&c, _counter).unwrap())
-        .await;
-    Json(counter)
-}
-
-#[openapi(tag = "Counters")]
-#[get("/subtract/<name>/<number>")]
-async fn subtract(name: String, number: u32, conn: DieselDbConn) -> Json<Counter> {
-    let _counter = NewCounter {
-        name,
-        counter: -(number as i32),
-    };
-    let counter = conn
-        .run(|c| database::actions::subtract(&c, _counter))
-        .await
-        .unwrap();
-
-    Json(counter)
-}
-
-#[openapi(tag = "Counters")]
-#[get("/status/<name>")]
-async fn status(name: String, conn: DieselDbConn) -> Option<Json<Counter>> {
-    let counter = conn
-        .run(|c| database::actions::get_counter_by_name(&c, name))
-        .await
-        .unwrap();
-    match counter {
-        Some(counter) => Some(Json(counter)),
-        None => None,
-    }
-}
 
 #[get("/sqlx")]
 async fn sqlx_all(mut conn: Connection<SqlxDbConn>) -> String {
     // let x = &mut *conn;
     let x = database::actions::with_sqlx::all(&mut *conn).await;
     format!("with SQlx, {:?}", x)
-}
-
-#[openapi(tag = "pg_Counters")]
-#[get("/")]
-async fn pg_all(conn: PostgresDbConn) -> Json<Vec<Counter>> {
-    // let x = &mut *conn;
-    let all_counters = conn
-        .run(|c| database::actions::with_postgres_crate::all(c))
-        .await
-        .unwrap();
-    Json(all_counters)
-}
-
-#[openapi(tag = "pg_Counters")]
-#[get("/add/<name>/<number>")]
-async fn pg_add(name: String, number: u32, conn: PostgresDbConn) -> Json<Counter> {
-    let new_counter = NewCounter {
-        name,
-        counter: number as i32,
-    };
-    let added_counter = conn
-        .run(|c| database::actions::with_postgres_crate::add(c, new_counter))
-        .await
-        .unwrap();
-    Json(added_counter)
-}
-
-#[openapi(tag = "pg_Counters")]
-#[get("/subtract/<name>/<number>")]
-async fn pg_subtract(name: String, number: u32, conn: PostgresDbConn) -> Json<Counter> {
-    let new_counter = NewCounter {
-        name,
-        counter: -(number as i32),
-    };
-    let subtracted_counter = conn
-        .run(|c| database::actions::with_postgres_crate::subtract(c, new_counter))
-        .await
-        .unwrap();
-    Json(subtracted_counter)
 }
 
 async fn run_db_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
@@ -174,7 +57,6 @@ async fn run_db_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
 async fn rocket() -> _ {
     let mut building_rocket = rocket::build()
         .attach(DieselDbConn::fairing())
-        .attach(PostgresDbConn::fairing())
         .attach(SqlxDbConn::init())
         .attach(AdHoc::on_ignite(
             "Initialise server schema",
@@ -214,8 +96,6 @@ async fn rocket() -> _ {
     mount_endpoints_and_merged_docs! {
         building_rocket, "/".to_owned(), openapi_settings,
         "calcio" => custom_route_spec,
-        "" =>  openapi_get_routes_spec!(openapi_settings: all,add, subtract, status  ),
-        "/pg" => openapi_get_routes_spec!(openapi_settings: pg_all, pg_add, pg_subtract)
     };
     building_rocket
 }
