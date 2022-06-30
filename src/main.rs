@@ -33,6 +33,7 @@ struct DieselDbConn(PgConnection);
 
 struct PostgresDbConn(postgres::Client);
 
+// this is saying to the documentation builder that we don't want any info about PostgresDbConn
 impl<'r> OpenApiFromRequest<'r> for PostgresDbConn {
     fn from_request_input(
         _gen: &mut OpenApiGenerator,
