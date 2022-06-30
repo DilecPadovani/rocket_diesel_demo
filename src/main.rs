@@ -34,10 +34,10 @@ struct DieselDbConn(PgConnection);
 struct SqlxDbConn(sqlx::PgPool);
 
 #[get("/sqlx")]
-async fn sqlx_all(mut conn: Connection<SqlxDbConn>) -> String {
+async fn sqlx_all(mut conn: Connection<SqlxDbConn>) -> Json<Vec<Counter>> {
     // let x = &mut *conn;
-    let x = database::actions::with_sqlx::all(&mut *conn).await;
-    format!("with SQlx, {:?}", x)
+    let counters = database::actions::with_sqlx::all(&mut *conn).await.unwrap();
+    Json(counters)
 }
 
 async fn run_db_migrations(rocket: Rocket<Build>) -> Rocket<Build> {
